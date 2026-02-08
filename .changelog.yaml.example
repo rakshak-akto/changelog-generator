@@ -1,0 +1,21 @@
+# Example configuration file for changelog-generator
+# Copy this to .changelog.yaml and customize for your project
+
+# GitHub configuration
+# Note: GITHUB_TOKEN should be set as environment variable for security
+repo_owner: myorg
+repo_name: myrepo
+
+# OpenAI configuration
+# Note: OPENAI_API_KEY should be set as environment variable for security
+openai_model: gpt-4o           # Model to use (gpt-4o, gpt-4, gpt-3.5-turbo)
+max_tokens: 4000                # Maximum tokens for response
+temperature: 0.3                # Lower = more focused, higher = more creative
+
+# Output configuration
+output_path: CHANGELOG.md       # Where to write the changelog
+include_authors: true           # Include commit authors in output
+include_dates: false            # Include commit dates in output
+
+# Behavior
+verbose: false                  # Enable verbose logging

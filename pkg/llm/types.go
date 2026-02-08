@@ -30,8 +30,9 @@ type ChangelogResponse struct {
 
 // ChangelogEntry represents a single entry in the changelog
 type ChangelogEntry struct {
-	SHA         string `json:"sha"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Author      string `json:"author"`
+	SHA             string  `json:"sha"`
+	Title           string  `json:"title"`
+	Description     string  `json:"description"`
+	Author          string  `json:"author"`
+	ImportanceScore float64 `json:"importance_score"` // 0-10 scale, 10 being most important
 }

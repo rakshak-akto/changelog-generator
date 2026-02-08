@@ -41,7 +41,9 @@ Examples:
   changelog-generator generate v1.0.0..v1.1.0
   changelog-generator generate --owner=facebook --repo=react v18.2.0..v18.3.0
   changelog-generator generate abc123..HEAD
-  changelog-generator generate --output=RELEASE.md v1.0.0..HEAD`,
+  changelog-generator generate --output=RELEASE.md v1.0.0..HEAD
+  changelog-generator generate --show-scores v1.0.0..v1.1.0
+  changelog-generator generate --min-score=7.0 v1.0.0..v1.1.0`,
 	Args: cobra.ExactArgs(1),
 	RunE: runGenerate,
 }
@@ -66,6 +68,8 @@ func init() {
 	generateCmd.Flags().BoolVar(&cfg.Verbose, "verbose", cfg.Verbose, "Verbose output")
 	generateCmd.Flags().BoolVar(&cfg.IncludeAuthors, "include-authors", cfg.IncludeAuthors, "Include commit authors")
 	generateCmd.Flags().BoolVar(&cfg.IncludeDates, "include-dates", cfg.IncludeDates, "Include commit dates")
+	generateCmd.Flags().BoolVar(&cfg.ShowScores, "show-scores", cfg.ShowScores, "Show importance scores for each commit")
+	generateCmd.Flags().Float64Var(&cfg.MinScore, "min-score", cfg.MinScore, "Minimum importance score to include (0-10)")
 }
 
 func runGenerate(cmd *cobra.Command, args []string) error {

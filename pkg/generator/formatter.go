@@ -66,6 +66,11 @@ func FormatMarkdown(response *llm.ChangelogResponse, from, to string, cfg *confi
 		sb.WriteString(fmt.Sprintf("## %s %s\n\n", emoji, category))
 
 		for _, entry := range entries {
+			// Skip entries below minimum score threshold
+			if cfg.MinScore > 0 && entry.ImportanceScore < cfg.MinScore {
+				continue
+			}
+
 			// Format: **Title** ([SHA](link))
 			commitLink := fmt.Sprintf("https://github.com/%s/%s/commit/%s",
 				cfg.RepoOwner, cfg.RepoName, entry.SHA)
@@ -81,6 +86,12 @@ func FormatMarkdown(response *llm.ChangelogResponse, from, to string, cfg *confi
 				shortSHA,
 				commitLink,
 			))
+
+			// Add score if configured
+			if cfg.ShowScores {
+				scoreIndicator := getScoreIndicator(entry.ImportanceScore)
+				sb.WriteString(fmt.Sprintf(" %s **[%.1f]**", scoreIndicator, entry.ImportanceScore))
+			}
 
 			// Add author if configured
 			if cfg.IncludeAuthors && entry.Author != "" {
@@ -122,6 +133,11 @@ func FormatMarkdown(response *llm.ChangelogResponse, from, to string, cfg *confi
 		sb.WriteString(fmt.Sprintf("## • %s\n\n", category))
 
 		for _, entry := range entries {
+			// Skip entries below minimum score threshold
+			if cfg.MinScore > 0 && entry.ImportanceScore < cfg.MinScore {
+				continue
+			}
+
 			commitLink := fmt.Sprintf("https://github.com/%s/%s/commit/%s",
 				cfg.RepoOwner, cfg.RepoName, entry.SHA)
 
@@ -136,6 +152,12 @@ func FormatMarkdown(response *llm.ChangelogResponse, from, to string, cfg *confi
 				shortSHA,
 				commitLink,
 			))
+
+			// Add score if configured
+			if cfg.ShowScores {
+				scoreIndicator := getScoreIndicator(entry.ImportanceScore)
+				sb.WriteString(fmt.Sprintf(" %s **[%.1f]**", scoreIndicator, entry.ImportanceScore))
+			}
 
 			if cfg.IncludeAuthors && entry.Author != "" {
 				sb.WriteString(fmt.Sprintf(" by @%s", entry.Author))
@@ -157,4 +179,20 @@ func FormatMarkdown(response *llm.ChangelogResponse, from, to string, cfg *confi
 	}
 
 	return sb.String()
+}
+
+// getScoreIndicator returns a visual indicator based on the importance score
+func getScoreIndicator(score float64) string {
+	switch {
+	case score >= 9.0:
+		return "🔴" // Critical
+	case score >= 7.0:
+		return "🟠" // High
+	case score >= 5.0:
+		return "🟡" // Medium
+	case score >= 3.0:
+		return "🟢" // Low
+	default:
+		return "⚪" // Trivial
+	}
 }

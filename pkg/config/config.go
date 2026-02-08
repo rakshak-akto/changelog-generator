@@ -24,6 +24,8 @@ type Config struct {
 	OutputPath     string
 	IncludeAuthors bool
 	IncludeDates   bool
+	ShowScores     bool
+	MinScore       float64
 
 	// Behavior
 	Verbose bool
@@ -56,6 +58,8 @@ func Load() (*Config, error) {
 		OutputPath:     viper.GetString("output_path"),
 		IncludeAuthors: viper.GetBool("include_authors"),
 		IncludeDates:   viper.GetBool("include_dates"),
+		ShowScores:     viper.GetBool("show_scores"),
+		MinScore:       viper.GetFloat64("min_score"),
 		Verbose:        viper.GetBool("verbose"),
 	}
 

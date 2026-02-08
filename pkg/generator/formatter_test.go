@@ -18,18 +18,20 @@ func TestFormatMarkdown(t *testing.T) {
 		Categories: map[string][]llm.ChangelogEntry{
 			"Features": {
 				{
-					SHA:         "abc123def456",
-					Title:       "Add OAuth2 authentication",
-					Description: "Implements OAuth2 flow with Google and GitHub providers.",
-					Author:      "johndoe",
+					SHA:             "abc123def456",
+					Title:           "Add OAuth2 authentication",
+					Description:     "Implements OAuth2 flow with Google and GitHub providers.",
+					Author:          "johndoe",
+					ImportanceScore: 8.5,
 				},
 			},
 			"Bug Fixes": {
 				{
-					SHA:         "def456ghi789",
-					Title:       "Fix race condition in cache",
-					Description: "Resolved concurrent access issues.",
-					Author:      "janedoe",
+					SHA:             "def456ghi789",
+					Title:           "Fix race condition in cache",
+					Description:     "Resolved concurrent access issues.",
+					Author:          "janedoe",
+					ImportanceScore: 7.0,
 				},
 			},
 		},
@@ -80,10 +82,11 @@ func TestFormatMarkdownWithoutAuthors(t *testing.T) {
 		Categories: map[string][]llm.ChangelogEntry{
 			"Features": {
 				{
-					SHA:         "abc123",
-					Title:       "Test feature",
-					Description: "Test description",
-					Author:      "john",
+					SHA:             "abc123",
+					Title:           "Test feature",
+					Description:     "Test description",
+					Author:          "john",
+					ImportanceScore: 6.0,
 				},
 			},
 		},

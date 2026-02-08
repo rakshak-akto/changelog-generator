@@ -70,9 +70,15 @@ func FormatMarkdown(response *llm.ChangelogResponse, from, to string, cfg *confi
 			commitLink := fmt.Sprintf("https://github.com/%s/%s/commit/%s",
 				cfg.RepoOwner, cfg.RepoName, entry.SHA)
 
+			// Get short SHA (first 7 chars or full if shorter)
+			shortSHA := entry.SHA
+			if len(shortSHA) > 7 {
+				shortSHA = shortSHA[:7]
+			}
+
 			sb.WriteString(fmt.Sprintf("- **%s** ([`%s`](%s))",
 				entry.Title,
-				entry.SHA[:7],
+				shortSHA,
 				commitLink,
 			))
 
@@ -119,9 +125,15 @@ func FormatMarkdown(response *llm.ChangelogResponse, from, to string, cfg *confi
 			commitLink := fmt.Sprintf("https://github.com/%s/%s/commit/%s",
 				cfg.RepoOwner, cfg.RepoName, entry.SHA)
 
+			// Get short SHA (first 7 chars or full if shorter)
+			shortSHA := entry.SHA
+			if len(shortSHA) > 7 {
+				shortSHA = shortSHA[:7]
+			}
+
 			sb.WriteString(fmt.Sprintf("- **%s** ([`%s`](%s))",
 				entry.Title,
-				entry.SHA[:7],
+				shortSHA,
 				commitLink,
 			))
 

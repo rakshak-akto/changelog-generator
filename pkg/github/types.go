@@ -27,3 +27,42 @@ type CommitStats struct {
 	Deletions int
 	Total     int
 }
+
+// TagInfo represents a Git tag with metadata
+type TagInfo struct {
+	Name       string    // Tag name (e.g., "v1.0.0")
+	SHA        string    // Tag object SHA
+	CommitSHA  string    // Commit SHA the tag points to
+	CommitDate time.Time // Date of the commit
+	Message    string    // Tag message (for annotated tags)
+}
+
+// ReleaseInfo represents a GitHub release
+type ReleaseInfo struct {
+	TagName     string    // Associated tag name
+	Name        string    // Release name/title
+	PublishedAt time.Time // When the release was published
+	CreatedAt   time.Time // When the release was created
+	Body        string    // Release notes
+	Author      string    // Release author
+	Draft       bool      // Is draft?
+	Prerelease  bool      // Is prerelease?
+}
+
+// ReleaseRef represents a unified tag or release reference
+type ReleaseRef struct {
+	Name         string    // Tag/release name (e.g., "v1.0.0")
+	Date         time.Time // Date of tag commit or release publication
+	Type         string    // "tag" or "release"
+	IsPrerelease bool      // For releases
+}
+
+// TimelineRelease represents a release period with its commits
+type TimelineRelease struct {
+	FromRef     string       // Starting tag/release name
+	ToRef       string       // Ending tag/release name
+	FromDate    time.Time    // Date of from ref
+	ToDate      time.Time    // Date of to ref
+	CommitCount int          // Number of commits
+	Commits     []CommitData // Actual commits
+}

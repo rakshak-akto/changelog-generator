@@ -1,10 +1,15 @@
-# Example configuration file for changelog-generator
-# Copy this to .changelog.yaml and customize for your project
+# Configuration Example for Changelog Generator
+#
+# For local usage, copy this file to .changelog.local.yaml:
+#   cp .changelog.yaml .changelog.local.yaml
+#
+# Then edit .changelog.local.yaml to add your repository settings.
+# .changelog.local.yaml is git-ignored and safe for local credentials.
 
-# GitHub configuration
+# GitHub configuration (optional - can be set via flags or interactive prompt)
 # Note: GITHUB_TOKEN should be set as environment variable for security
-repo_owner: myorg
-repo_name: myrepo
+# repo_owner: facebook
+# repo_name: react
 
 # OpenAI configuration
 # Note: OPENAI_API_KEY should be set as environment variable for security

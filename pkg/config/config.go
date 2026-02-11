@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -29,18 +30,28 @@ type Config struct {
 
 	// Behavior
 	Verbose bool
+
+	// Timeline mode
+	TimelineMode bool
+	FromDate     time.Time
+	ToDate       time.Time
 }
 
 // Load loads configuration from environment, config file, and defaults
 func Load() (*Config, error) {
-	// Set up viper
-	viper.SetConfigName(".changelog")
+	// Look for .changelog.local.yaml first (git-ignored, user-specific)
+	// Fall back to .changelog.yaml (committed example/defaults)
+	viper.SetConfigName(".changelog.local")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("$HOME")
 
-	// Read config file if it exists (optional)
-	_ = viper.ReadInConfig()
+	// Try to read .changelog.local.yaml
+	if err := viper.ReadInConfig(); err != nil {
+		// If .changelog.local.yaml doesn't exist, try .changelog.yaml
+		viper.SetConfigName(".changelog")
+		_ = viper.ReadInConfig() // Ignore error, config file is optional
+	}
 
 	// Set up environment variable support
 	viper.SetEnvPrefix("CHANGELOG")
@@ -88,16 +99,46 @@ func (c *Config) Validate() error {
 	if c.GitHubToken == "" {
 		return fmt.Errorf("GitHub token is required (set GITHUB_TOKEN environment variable)")
 	}
-	if c.RepoOwner == "" {
-		return fmt.Errorf("repository owner is required (use --owner flag)")
-	}
-	if c.RepoName == "" {
-		return fmt.Errorf("repository name is required (use --repo flag)")
-	}
+	// RepoOwner and RepoName are validated later (after interactive prompt if needed)
+	// This allows --interactive flag to work without requiring --owner/--repo upfront
 	if c.OpenAIAPIKey == "" {
 		return fmt.Errorf("OpenAI API key is required (set OPENAI_API_KEY environment variable)")
 	}
 	return nil
+}
+
+// ValidateTimeline validates timeline-specific configuration
+func (c *Config) ValidateTimeline() error {
+	if c.FromDate.IsZero() {
+		return fmt.Errorf("from-date is required in timeline mode")
+	}
+	if c.ToDate.IsZero() {
+		return fmt.Errorf("to-date is required in timeline mode")
+	}
+	if c.FromDate.After(c.ToDate) {
+		return fmt.Errorf("from-date must be before to-date")
+	}
+	return nil
+}
+
+// ValidateRepository validates that repository information is present
+func (c *Config) ValidateRepository() error {
+	if c.RepoOwner == "" {
+		return fmt.Errorf("repository owner is required")
+	}
+	if c.RepoName == "" {
+		return fmt.Errorf("repository name is required")
+	}
+	return nil
+}
+
+// SaveLocal saves repository configuration to .changelog.local.yaml
+func (c *Config) SaveLocal() error {
+	viper.Set("repo_owner", c.RepoOwner)
+	viper.Set("repo_name", c.RepoName)
+
+	// Write to .changelog.local.yaml in current directory
+	return viper.WriteConfigAs(".changelog.local.yaml")
 }
 
 // getEnvOrViper gets a value from environment variable first, then viper

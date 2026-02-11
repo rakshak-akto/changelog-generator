@@ -29,10 +29,12 @@ Thumbs.db
 # Output files
 CHANGELOG*.md
 RELEASE_NOTES*.md
+*-changelog.md
+*-timeline-changelog.md
 test.md
 
 # Config with secrets
-.changelog.yaml
+.changelog.local.yaml
 
 # Coverage
 coverage.out

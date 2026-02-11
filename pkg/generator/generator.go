@@ -3,6 +3,7 @@ package generator
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/rakshaksatsangi/changelog-generator/pkg/config"
 	"github.com/rakshaksatsangi/changelog-generator/pkg/github"
@@ -141,4 +142,68 @@ func (g *Generator) prepareCommitsForLLM(commits []github.CommitData) []llm.Comm
 // formatAsMarkdown formats the LLM response as markdown
 func (g *Generator) formatAsMarkdown(response *llm.ChangelogResponse, from, to string) string {
 	return FormatMarkdown(response, from, to, g.config)
+}
+
+// GenerateTimeline generates a changelog for multiple releases in a date range
+func (g *Generator) GenerateTimeline(from, to time.Time) (*TimelineChangelog, error) {
+	// 1. Discover releases within timeline
+	timelineReleases, err := g.githubClient.GetTimelineReleases(from, to)
+	if err != nil {
+		return nil, fmt.Errorf("discover releases: %w", err)
+	}
+
+	if g.config.Verbose {
+		fmt.Printf("Found %d releases in timeline\n\n", len(timelineReleases))
+	}
+
+	// 2. Process each release
+	var releaseChangelogs []ReleaseChangelog
+	for i, release := range timelineReleases {
+		if g.config.Verbose {
+			fmt.Printf("[%d/%d] Processing %s → %s (%d commits)...\n",
+				i+1, len(timelineReleases), release.FromRef, release.ToRef, release.CommitCount)
+		}
+
+		// Prepare commits for LLM
+		commitInfos := g.prepareCommitsForLLM(release.Commits)
+
+		// Generate changelog for this release
+		response, err := g.llmClient.GenerateChangelog(llm.ChangelogRequest{
+			Commits:  commitInfos,
+			RepoName: fmt.Sprintf("%s/%s", g.config.RepoOwner, g.config.RepoName),
+			FromRef:  release.FromRef,
+			ToRef:    release.ToRef,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("generate changelog for %s: %w", release.ToRef, err)
+		}
+
+		releaseChangelogs = append(releaseChangelogs, ReleaseChangelog{
+			FromRef:    release.FromRef,
+			ToRef:      release.ToRef,
+			FromDate:   release.FromDate,
+			ToDate:     release.ToDate,
+			Summary:    response.Summary,
+			Highlights: response.Highlights,
+			Categories: response.Categories,
+			Commits:    release.Commits,
+		})
+	}
+
+	if g.config.Verbose {
+		fmt.Println()
+	}
+
+	// 3. Build timeline changelog
+	timeline := &TimelineChangelog{
+		FromDate: from,
+		ToDate:   to,
+		RepoName: fmt.Sprintf("%s/%s", g.config.RepoOwner, g.config.RepoName),
+		Releases: releaseChangelogs,
+	}
+
+	// 4. Format as markdown
+	timeline.Markdown = g.formatTimelineAsMarkdown(timeline)
+
+	return timeline, nil
 }

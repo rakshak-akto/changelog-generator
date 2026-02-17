@@ -36,3 +36,30 @@ type ChangelogEntry struct {
 	Author          string  `json:"author"`
 	ImportanceScore float64 `json:"importance_score"` // 0-10 scale, 10 being most important
 }
+
+// PRInfo contains pull request information for LLM processing
+type PRInfo struct {
+	Number int
+	Title  string
+	Author string
+	Body   string
+}
+
+// PRChangelogRequest represents a request to generate PR-based release notes
+type PRChangelogRequest struct {
+	PRs      []PRInfo
+	RepoName string
+	FromRef  string
+	ToRef    string
+}
+
+// PRChangelogResponse represents the LLM response for PR-based release notes
+type PRChangelogResponse struct {
+	Entries []PRSummaryEntry `json:"entries"`
+}
+
+// PRSummaryEntry represents a single PR summary from the LLM
+type PRSummaryEntry struct {
+	Number  int    `json:"number"`
+	Summary string `json:"summary"`
+}

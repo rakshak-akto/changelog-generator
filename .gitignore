@@ -35,6 +35,7 @@ test.md
 
 # Config with secrets
 .changelog.local.yaml
+.env
 
 # Coverage
 coverage.out

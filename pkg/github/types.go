@@ -57,12 +57,23 @@ type ReleaseRef struct {
 	IsPrerelease bool      // For releases
 }
 
-// TimelineRelease represents a release period with its commits
+// PullRequestData represents a pull request with its details
+type PullRequestData struct {
+	Number int
+	Title  string
+	Author string
+	URL    string
+	Body   string   // PR description (for LLM context)
+	Labels []string
+}
+
+// TimelineRelease represents a release period with its commits and PRs
 type TimelineRelease struct {
-	FromRef     string       // Starting tag/release name
-	ToRef       string       // Ending tag/release name
-	FromDate    time.Time    // Date of from ref
-	ToDate      time.Time    // Date of to ref
-	CommitCount int          // Number of commits
-	Commits     []CommitData // Actual commits
+	FromRef      string            // Starting tag/release name
+	ToRef        string            // Ending tag/release name
+	FromDate     time.Time         // Date of from ref
+	ToDate       time.Time         // Date of to ref
+	CommitCount  int               // Number of commits
+	Commits      []CommitData      // Actual commits
+	PullRequests []PullRequestData // PRs in this release
 }

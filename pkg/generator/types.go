@@ -29,12 +29,14 @@ type TimelineChangelog struct {
 
 // ReleaseChangelog represents a single release within a timeline
 type ReleaseChangelog struct {
-	FromRef    string
-	ToRef      string
-	FromDate   time.Time
-	ToDate     time.Time
-	Summary    string
-	Highlights []string
-	Categories map[string][]llm.ChangelogEntry
-	Commits    []github.CommitData // Individual commits in this release
+	FromRef      string
+	ToRef        string
+	FromDate     time.Time
+	ToDate       time.Time
+	Summary      string
+	Highlights   []string
+	Categories   map[string][]llm.ChangelogEntry
+	Commits      []github.CommitData      // Individual commits in this release
+	PullRequests []github.PullRequestData  // PRs in this release
+	PRSummaries  map[int]string            // PR number → LLM summary
 }

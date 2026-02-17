@@ -69,6 +69,39 @@ func (c *OpenAIClient) GenerateChangelog(req ChangelogRequest) (*ChangelogRespon
 	return response, nil
 }
 
+// GeneratePRChangelog generates PR-based release notes using OpenAI
+func (c *OpenAIClient) GeneratePRChangelog(req PRChangelogRequest) (*PRChangelogResponse, error) {
+	prompt := BuildPRChangelogPrompt(req)
+
+	ctx := context.Background()
+	params := openai.ChatCompletionNewParams{
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.UserMessage(prompt),
+		},
+		Model:       openai.ChatModel(c.model),
+		MaxTokens:   param.NewOpt(int64(c.maxTokens)),
+		Temperature: param.NewOpt(c.temperature),
+	}
+
+	chatCompletion, err := c.client.Chat.Completions.New(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("create chat completion: %w", err)
+	}
+
+	if len(chatCompletion.Choices) == 0 {
+		return nil, fmt.Errorf("no response from OpenAI")
+	}
+
+	content := chatCompletion.Choices[0].Message.Content
+
+	response, err := ParsePRChangelogResponse(content)
+	if err != nil {
+		return nil, fmt.Errorf("parse PR changelog response: %w", err)
+	}
+
+	return response, nil
+}
+
 // TruncateDiff truncates a diff to a reasonable size for token limits
 func TruncateDiff(diff string, maxLines int) string {
 	lines := strings.Split(diff, "\n")

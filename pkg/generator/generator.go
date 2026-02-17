@@ -139,6 +139,20 @@ func (g *Generator) prepareCommitsForLLM(commits []github.CommitData) []llm.Comm
 	return commitInfos
 }
 
+// preparePRsForLLM converts GitHub PRs to LLM-friendly format
+func (g *Generator) preparePRsForLLM(prs []github.PullRequestData) []llm.PRInfo {
+	infos := make([]llm.PRInfo, 0, len(prs))
+	for _, pr := range prs {
+		infos = append(infos, llm.PRInfo{
+			Number: pr.Number,
+			Title:  pr.Title,
+			Author: pr.Author,
+			Body:   pr.Body,
+		})
+	}
+	return infos
+}
+
 // formatAsMarkdown formats the LLM response as markdown
 func (g *Generator) formatAsMarkdown(response *llm.ChangelogResponse, from, to string) string {
 	return FormatMarkdown(response, from, to, g.config)
@@ -156,37 +170,43 @@ func (g *Generator) GenerateTimeline(from, to time.Time) (*TimelineChangelog, er
 		fmt.Printf("Found %d releases in timeline\n\n", len(timelineReleases))
 	}
 
-	// 2. Process each release
+	// 2. Process each release (PR-based)
 	var releaseChangelogs []ReleaseChangelog
 	for i, release := range timelineReleases {
 		if g.config.Verbose {
-			fmt.Printf("[%d/%d] Processing %s → %s (%d commits)...\n",
-				i+1, len(timelineReleases), release.FromRef, release.ToRef, release.CommitCount)
+			fmt.Printf("[%d/%d] Processing %s → %s (%d commits, %d PRs)...\n",
+				i+1, len(timelineReleases), release.FromRef, release.ToRef,
+				release.CommitCount, len(release.PullRequests))
 		}
 
-		// Prepare commits for LLM
-		commitInfos := g.prepareCommitsForLLM(release.Commits)
+		// Build PR summaries via LLM
+		prSummaries := make(map[int]string)
+		if len(release.PullRequests) > 0 {
+			prInfos := g.preparePRsForLLM(release.PullRequests)
 
-		// Generate changelog for this release
-		response, err := g.llmClient.GenerateChangelog(llm.ChangelogRequest{
-			Commits:  commitInfos,
-			RepoName: fmt.Sprintf("%s/%s", g.config.RepoOwner, g.config.RepoName),
-			FromRef:  release.FromRef,
-			ToRef:    release.ToRef,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("generate changelog for %s: %w", release.ToRef, err)
+			response, err := g.llmClient.GeneratePRChangelog(llm.PRChangelogRequest{
+				PRs:      prInfos,
+				RepoName: fmt.Sprintf("%s/%s", g.config.RepoOwner, g.config.RepoName),
+				FromRef:  release.FromRef,
+				ToRef:    release.ToRef,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("generate PR changelog for %s: %w", release.ToRef, err)
+			}
+
+			for _, entry := range response.Entries {
+				prSummaries[entry.Number] = entry.Summary
+			}
 		}
 
 		releaseChangelogs = append(releaseChangelogs, ReleaseChangelog{
-			FromRef:    release.FromRef,
-			ToRef:      release.ToRef,
-			FromDate:   release.FromDate,
-			ToDate:     release.ToDate,
-			Summary:    response.Summary,
-			Highlights: response.Highlights,
-			Categories: response.Categories,
-			Commits:    release.Commits,
+			FromRef:      release.FromRef,
+			ToRef:        release.ToRef,
+			FromDate:     release.FromDate,
+			ToDate:       release.ToDate,
+			Commits:      release.Commits,
+			PullRequests: release.PullRequests,
+			PRSummaries:  prSummaries,
 		})
 	}
 

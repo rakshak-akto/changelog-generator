@@ -3,12 +3,16 @@ package github
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/google/go-github/v66/github"
 	"golang.org/x/oauth2"
 )
+
+var mergeCommitRe = regexp.MustCompile(`Merge pull request #(\d+)`)
 
 // Client wraps the GitHub API client
 type Client struct {
@@ -270,6 +274,57 @@ func (c *Client) GetReleaseRefsInTimeline(from, to time.Time) ([]ReleaseRef, err
 	return refs, nil
 }
 
+// GetPullRequest fetches details for a single pull request by number
+func (c *Client) GetPullRequest(number int) (*PullRequestData, error) {
+	pr, _, err := c.client.PullRequests.Get(c.ctx, c.owner, c.repo, number)
+	if err != nil {
+		return nil, fmt.Errorf("get pull request #%d: %w", number, err)
+	}
+
+	var labels []string
+	for _, label := range pr.Labels {
+		labels = append(labels, label.GetName())
+	}
+
+	return &PullRequestData{
+		Number: pr.GetNumber(),
+		Title:  pr.GetTitle(),
+		Author: pr.GetUser().GetLogin(),
+		URL:    pr.GetHTMLURL(),
+		Body:   pr.GetBody(),
+		Labels: labels,
+	}, nil
+}
+
+// ExtractPRsFromCommits scans merge commit messages for PR numbers and fetches their details
+func (c *Client) ExtractPRsFromCommits(commits []CommitData) ([]PullRequestData, error) {
+	seen := make(map[int]bool)
+	var prs []PullRequestData
+
+	for _, commit := range commits {
+		matches := mergeCommitRe.FindStringSubmatch(commit.Message)
+		if len(matches) < 2 {
+			continue
+		}
+		prNumber, err := strconv.Atoi(matches[1])
+		if err != nil {
+			continue
+		}
+		if seen[prNumber] {
+			continue
+		}
+		seen[prNumber] = true
+
+		pr, err := c.GetPullRequest(prNumber)
+		if err != nil {
+			return nil, err
+		}
+		prs = append(prs, *pr)
+	}
+
+	return prs, nil
+}
+
 // GetTimelineReleases builds TimelineRelease objects for consecutive ref pairs
 func (c *Client) GetTimelineReleases(from, to time.Time) ([]TimelineRelease, error) {
 	// Get all release refs in timeline
@@ -295,13 +350,20 @@ func (c *Client) GetTimelineReleases(from, to time.Time) ([]TimelineRelease, err
 			return nil, fmt.Errorf("get commits %s..%s: %w", fromRef.Name, toRef.Name, err)
 		}
 
+		// Extract PRs from merge commits
+		prs, err := c.ExtractPRsFromCommits(commits)
+		if err != nil {
+			return nil, fmt.Errorf("extract PRs %s..%s: %w", fromRef.Name, toRef.Name, err)
+		}
+
 		timelineReleases = append(timelineReleases, TimelineRelease{
-			FromRef:     fromRef.Name,
-			ToRef:       toRef.Name,
-			FromDate:    fromRef.Date,
-			ToDate:      toRef.Date,
-			CommitCount: len(commits),
-			Commits:     commits,
+			FromRef:      fromRef.Name,
+			ToRef:        toRef.Name,
+			FromDate:     fromRef.Date,
+			ToDate:       toRef.Date,
+			CommitCount:  len(commits),
+			Commits:      commits,
+			PullRequests: prs,
 		})
 	}
 

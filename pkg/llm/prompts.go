@@ -88,6 +88,67 @@ func BuildChangelogPrompt(req ChangelogRequest) string {
 	return sb.String()
 }
 
+// BuildPRChangelogPrompt creates the prompt for PR-based release notes
+func BuildPRChangelogPrompt(req PRChangelogRequest) string {
+	var sb strings.Builder
+
+	sb.WriteString("You are a technical writer creating release notes for a software release.\n\n")
+	sb.WriteString(fmt.Sprintf("Repository: %s\n", req.RepoName))
+	sb.WriteString(fmt.Sprintf("Release: %s\n\n", req.ToRef))
+	sb.WriteString(fmt.Sprintf("This release contains %d pull requests.\n\n", len(req.PRs)))
+
+	sb.WriteString("Pull Requests:\n")
+	sb.WriteString("---\n\n")
+
+	for i, pr := range req.PRs {
+		sb.WriteString(fmt.Sprintf("%d. PR #%d: %s\n", i+1, pr.Number, pr.Title))
+		sb.WriteString(fmt.Sprintf("   Author: %s\n", pr.Author))
+		if pr.Body != "" {
+			// Truncate long PR bodies
+			body := pr.Body
+			if len(body) > 500 {
+				body = body[:500] + "..."
+			}
+			sb.WriteString(fmt.Sprintf("   Description: %s\n", body))
+		}
+		sb.WriteString("\n")
+	}
+
+	sb.WriteString("---\n\n")
+	sb.WriteString("For each pull request, write a single concise sentence summarizing its user-facing impact.\n")
+	sb.WriteString("Focus on WHAT changed from the user's perspective, not implementation details.\n\n")
+	sb.WriteString("Output ONLY valid JSON with this structure:\n")
+	sb.WriteString("{\n")
+	sb.WriteString("  \"entries\": [\n")
+	sb.WriteString("    {\"number\": 4208, \"summary\": \"One sentence describing what this PR does for users.\"},\n")
+	sb.WriteString("    ...\n")
+	sb.WriteString("  ]\n")
+	sb.WriteString("}\n\n")
+	sb.WriteString("Important:\n")
+	sb.WriteString("- Include an entry for EVERY pull request\n")
+	sb.WriteString("- Each summary must be a single concise sentence\n")
+	sb.WriteString("- Write from the user's perspective\n")
+	sb.WriteString("- Output ONLY the JSON, no additional text\n")
+
+	return sb.String()
+}
+
+// ParsePRChangelogResponse parses the JSON response for PR-based release notes
+func ParsePRChangelogResponse(jsonStr string) (*PRChangelogResponse, error) {
+	jsonStr = strings.TrimSpace(jsonStr)
+	jsonStr = strings.TrimPrefix(jsonStr, "```json")
+	jsonStr = strings.TrimPrefix(jsonStr, "```")
+	jsonStr = strings.TrimSuffix(jsonStr, "```")
+	jsonStr = strings.TrimSpace(jsonStr)
+
+	var response PRChangelogResponse
+	if err := json.Unmarshal([]byte(jsonStr), &response); err != nil {
+		return nil, fmt.Errorf("parse PR changelog JSON response: %w", err)
+	}
+
+	return &response, nil
+}
+
 // ParseChangelogResponse parses the JSON response from the LLM
 func ParseChangelogResponse(jsonStr string) (*ChangelogResponse, error) {
 	// Clean up the response - remove markdown code blocks if present

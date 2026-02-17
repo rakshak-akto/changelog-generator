@@ -197,157 +197,40 @@ func getScoreIndicator(score float64) string {
 	}
 }
 
-// formatTimelineAsMarkdown formats a timeline changelog as markdown
+// formatTimelineAsMarkdown formats a timeline changelog as PR-based release notes
 func (g *Generator) formatTimelineAsMarkdown(timeline *TimelineChangelog) string {
 	var b strings.Builder
 
 	// Title and metadata
-	b.WriteString(fmt.Sprintf("# Changelog: %s\n\n", timeline.RepoName))
+	b.WriteString(fmt.Sprintf("# Release Notes: %s\n\n", timeline.RepoName))
 	b.WriteString(fmt.Sprintf("**Timeline:** %s to %s\n\n",
 		timeline.FromDate.Format("January 2, 2006"),
 		timeline.ToDate.Format("January 2, 2006")))
-	b.WriteString(fmt.Sprintf("**Total Releases:** %d\n\n", len(timeline.Releases)))
-
-	// Table of contents
-	b.WriteString("## 📋 Releases\n\n")
-	for _, release := range timeline.Releases {
-		anchor := sanitizeAnchor(release.ToRef)
-		b.WriteString(fmt.Sprintf("- [%s](#%s) — %s\n",
-			release.ToRef,
-			anchor,
-			release.ToDate.Format("Jan 2, 2006")))
-	}
-	b.WriteString("\n---\n\n")
 
 	// Each release section
 	for i, release := range timeline.Releases {
-		b.WriteString(fmt.Sprintf("## %s\n\n", release.ToRef))
-		b.WriteString(fmt.Sprintf("**Released:** %s\n\n", release.ToDate.Format("January 2, 2006")))
-		b.WriteString(fmt.Sprintf("**Range:** `%s` → `%s`\n\n", release.FromRef, release.ToRef))
+		b.WriteString(fmt.Sprintf("## [Release %s]\n\n", release.ToRef))
 
-		// Summary
-		if release.Summary != "" {
-			b.WriteString("### Summary\n\n")
-			b.WriteString(release.Summary)
-			b.WriteString("\n\n")
-		}
+		if len(release.PullRequests) > 0 {
+			for _, pr := range release.PullRequests {
+				// Format: - PR title by @author in PR_URL
+				b.WriteString(fmt.Sprintf("- %s by @%s in %s\n", pr.Title, pr.Author, pr.URL))
 
-		// Highlights
-		if len(release.Highlights) > 0 {
-			b.WriteString("### ✨ Highlights\n\n")
-			for _, highlight := range release.Highlights {
-				b.WriteString(fmt.Sprintf("- %s\n", highlight))
-			}
-			b.WriteString("\n")
-		}
-
-		// Individual commits
-		if len(release.Commits) > 0 {
-			b.WriteString("### 📝 Commits\n\n")
-			for _, commit := range release.Commits {
-				// Get short SHA (first 7 chars)
-				shortSHA := commit.SHA
-				if len(shortSHA) > 7 {
-					shortSHA = shortSHA[:7]
+				// Add LLM summary indented
+				if summary, ok := release.PRSummaries[pr.Number]; ok && summary != "" {
+					b.WriteString(fmt.Sprintf("    - %s\n", summary))
 				}
-
-				// Format commit link
-				commitLink := fmt.Sprintf("https://github.com/%s/%s/commit/%s",
-					g.config.RepoOwner, g.config.RepoName, commit.SHA)
-
-				// Extract first line of commit message
-				message := commit.Message
-				if idx := strings.Index(message, "\n"); idx != -1 {
-					message = message[:idx]
-				}
-
-				// Format: - [SHA] Message by @author
-				b.WriteString(fmt.Sprintf("- [`%s`](%s) %s", shortSHA, commitLink, message))
-
-				if commit.Author != "" {
-					b.WriteString(fmt.Sprintf(" by @%s", commit.Author))
-				}
-
-				b.WriteString("\n")
 			}
-			b.WriteString("\n")
-		}
-
-		// Categories (reuse existing formatting logic)
-		b.WriteString(formatCategoriesForRelease(release.Categories, g.config))
-
-		// Separator between releases
-		if i < len(timeline.Releases)-1 {
-			b.WriteString("\n---\n\n")
-		}
-	}
-
-	return b.String()
-}
-
-// sanitizeAnchor converts a string to a valid markdown anchor
-func sanitizeAnchor(s string) string {
-	s = strings.ToLower(s)
-	s = strings.ReplaceAll(s, ".", "")
-	s = strings.ReplaceAll(s, " ", "-")
-	return s
-}
-
-// formatCategoriesForRelease formats categories with minimal headers (for timeline mode)
-func formatCategoriesForRelease(categories map[string][]llm.ChangelogEntry, cfg *config.Config) string {
-	var b strings.Builder
-
-	// Category order
-	categoryOrder := []string{
-		"Breaking Changes",
-		"New Features",
-		"Enhancements",
-		"Bug Fixes",
-		"Performance",
-		"Documentation",
-		"Dependencies",
-		"Refactoring",
-		"Testing",
-		"CI/CD",
-		"Other",
-	}
-
-	for _, categoryName := range categoryOrder {
-		entries, exists := categories[categoryName]
-		if !exists || len(entries) == 0 {
-			continue
-		}
-
-		b.WriteString(fmt.Sprintf("### %s\n\n", categoryName))
-
-		for _, entry := range entries {
-			// Apply min-score filter if configured
-			if cfg.MinScore > 0 && entry.ImportanceScore < cfg.MinScore {
-				continue
-			}
-
-			// Format entry
-			b.WriteString(fmt.Sprintf("- %s", entry.Description))
-
-			// Add commit link
-			if entry.SHA != "" {
-				shortSHA := entry.SHA
-				if len(shortSHA) > 7 {
-					shortSHA = shortSHA[:7]
-				}
-				b.WriteString(fmt.Sprintf(" ([`%s`](https://github.com/%s/%s/commit/%s))",
-					shortSHA, cfg.RepoOwner, cfg.RepoName, entry.SHA))
-			}
-
-			// Add importance score if enabled
-			if cfg.ShowScores {
-				b.WriteString(fmt.Sprintf(" `[%.1f]`", entry.ImportanceScore))
-			}
-
-			b.WriteString("\n")
+		} else {
+			b.WriteString("_No pull requests in this release._\n")
 		}
 
 		b.WriteString("\n")
+
+		// Separator between releases
+		if i < len(timeline.Releases)-1 {
+			b.WriteString("---\n\n")
+		}
 	}
 
 	return b.String()
